@@ -1,0 +1,162 @@
+<div class="page">
+  <div class="page-head">
+    <div>
+      <h1>{{ admin ? 'Gestión de préstamos' : 'Mis préstamos' }}</h1>
+      <p>{{ admin ? 'Registra nuevos préstamos y realiza el seguimiento de los activos y vencidos'
+                  : 'Libros que tienes o tuviste en préstamo' }}</p>
+    </div>
+  </div>
+
+  <div class="chips mb-2">
+    <button class="chip" [class.active]="estado() === ''" (click)="filtrar('')">Todos <span class="count">{{ conteos()['TODOS'] ?? '…' }}</span></button>
+    <button class="chip" [class.active]="estado() === 'ACTIVO'" (click)="filtrar('ACTIVO')">Activos <span class="count">{{ conteos()['ACTIVO'] ?? '…' }}</span></button>
+    <button class="chip" [class.active]="estado() === 'VENCIDO'" (click)="filtrar('VENCIDO')">Vencidos <span class="count">{{ conteos()['VENCIDO'] ?? '…' }}</span></button>
+    <button class="chip" [class.active]="estado() === 'DEVUELTO'" (click)="filtrar('DEVUELTO')">Devueltos <span class="count">{{ conteos()['DEVUELTO'] ?? '…' }}</span></button>
+  </div>
+
+  <div [class.split]="true">
+    <section class="card">
+      <div class="card-header"><h2><lucide-icon name="arrow-left-right" [size]="18" /> Listado de préstamos</h2></div>
+      @if (admin) {
+        <div class="toolbar">
+          <div class="input-icon">
+            <lucide-icon name="search" [size]="16" />
+            <input class="input" placeholder="Buscar por usuario, documento o libro…" [(ngModel)]="q" (input)="buscarConRetraso()" />
+          </div>
+        </div>
+      }
+      @if (pagina(); as p) {
+        @if (p.content.length) {
+          <div class="table-wrap">
+            <table class="table">
+              <thead>
+                <tr>@if (admin) {<th>Usuario</th>}<th>Libro</th><th>Fechas</th><th>Estado</th></tr>
+              </thead>
+              <tbody>
+                @for (pr of p.content; track pr.id; let i = $index) {
+                  <tr [style.--i]="i">
+                    @if (admin) {
+                      <td><strong>{{ pr.usuarioNombre }}</strong><span class="sub mono">DNI {{ pr.usuarioDocumento }}</span></td>
+                    }
+                    <td>
+                      <div class="flex">
+                        <app-book-cover [url]="pr.libroPortadaUrl" [titulo]="pr.libroTitulo" [ancho]="28" />
+                        <span><span class="titulo">{{ pr.libroTitulo }}</span><span class="sub mono">{{ pr.codigo }}</span></span>
+                      </div>
+                    </td>
+                    <td>
+                      {{ pr.fechaPrestamo | date: 'dd/MM/yy' }} → {{ pr.fechaVencimiento | date: 'dd/MM/yy' }}
+                      <div class="small" [class.text-danger]="pr.diasRestantes < 0 && pr.estado !== 'DEVUELTO'" [class.muted]="pr.diasRestantes >= 0 || pr.estado === 'DEVUELTO'">{{ textoDias(pr) }}</div>
+                    </td>
+                    <td><app-estado-badge [estado]="pr.estado" /></td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        } @else {
+          <app-empty-state icono="arrow-left-right" titulo="No hay préstamos" texto="No se encontraron préstamos con este filtro" />
+        }
+        <app-pagination [pagina]="p.page" [totalPaginas]="p.totalPages" [total]="p.totalElements" [tamano]="p.size"
+                        etiqueta="préstamos" (cambiar)="cargar($event)" />
+      }
+    </section>
+
+    @if (admin) {
+      <!-- ===== Registrar préstamo (CU-08) ===== -->
+      <aside class="card registro">
+        <div class="card-header"><h2><lucide-icon name="book-plus" [size]="18" /> Registrar nuevo préstamo</h2></div>
+        <div class="card-body">
+          <div class="field">
+            <label>Usuario <span class="req">*</span></label>
+            @if (usuarioSel(); as u) {
+              <div class="seleccion">
+                <span class="avatar">{{ u.nombres[0] }}{{ u.apellidos[0] }}</span>
+                <div class="grow"><strong>{{ u.nombreCompleto }}</strong><span class="muted small">DNI {{ u.documento }}</span></div>
+                <button class="icon-btn" (click)="usuarioSel.set(null)" aria-label="Cambiar"><lucide-icon name="x" [size]="15" /></button>
+              </div>
+            } @else {
+              <app-search-select [buscar]="buscarUsuarios" placeholder="Buscar por nombre o documento…" [invalido]="intento()"
+                                 [deshabilitar]="usuarioNoHabilitado" (seleccionado)="usuarioSel.set($event)">
+                <ng-template let-u>
+                  <div class="flex">
+                    <span class="avatar">{{ u.nombres[0] }}{{ u.apellidos[0] }}</span>
+                    <span class="grow"><strong>{{ u.nombreCompleto }}</strong><br /><span class="muted small">DNI {{ u.documento }}</span></span>
+                    @if (u.estado !== 'ACTIVO') { <app-estado-badge [estado]="u.estado" /> }
+                  </div>
+                </ng-template>
+              </app-search-select>
+              @if (intento()) { <span class="error-text">Seleccione un usuario</span> }
+            }
+          </div>
+
+          <div class="field">
+            <label>Libro <span class="req">*</span></label>
+            @if (libroSel(); as l) {
+              <div class="seleccion libro">
+                <app-book-cover [url]="l.portadaUrl" [titulo]="l.titulo" [ancho]="46" />
+                <div class="grow">
+                  <strong>{{ l.titulo }}</strong>
+                  <span class="muted small">{{ l.autores[0]?.nombreCompleto }}</span>
+                  <span class="small" [class.text-success]="l.disponible" [class.text-danger]="!l.disponible">
+                    Disponibles: {{ l.cantidadDisponible }} de {{ l.cantidadTotal }}
+                  </span>
+                </div>
+                <button class="icon-btn" (click)="libroSel.set(null)" aria-label="Cambiar"><lucide-icon name="x" [size]="15" /></button>
+              </div>
+              @if (!l.disponible) {
+                <div class="alert warning mt-1">
+                  <lucide-icon name="triangle-alert" [size]="16" />
+                  <span>Sin ejemplares libres. Solo se podrá prestar si el usuario tiene este libro apartado por reserva; si no,
+                    <a routerLink="/reservas">registre una reserva</a>.</span>
+                </div>
+              }
+            } @else {
+              <app-search-select [buscar]="buscarLibros" placeholder="Buscar libro por título, autor o ISBN…" [invalido]="intento()"
+                                 (seleccionado)="libroSel.set($event)">
+                <ng-template let-l>
+                  <div class="flex">
+                    <app-book-cover [url]="l.portadaUrl" [titulo]="l.titulo" [ancho]="26" />
+                    <span class="grow"><strong>{{ l.titulo }}</strong><br />
+                      <span class="small" [class.text-success]="l.disponible" [class.text-danger]="!l.disponible">
+                        {{ l.disponible ? l.cantidadDisponible + ' disponibles' : 'Sin ejemplares' }}</span></span>
+                  </div>
+                </ng-template>
+              </app-search-select>
+              @if (intento()) { <span class="error-text">Seleccione un libro</span> }
+            }
+          </div>
+
+          <div class="form-grid">
+            <div class="field">
+              <label>Fecha de préstamo</label>
+              <input class="input" type="date" [value]="hoy" disabled />
+            </div>
+            <div class="field">
+              <label>Fecha de vencimiento <span class="req">*</span></label>
+              <input class="input" type="date" [(ngModel)]="fechaVencimiento" [min]="hoy" [max]="maxFecha" />
+            </div>
+          </div>
+
+          <div class="alert info">
+            <lucide-icon name="info" [size]="16" />
+            <span>Plazo por defecto: 14 días. Máximo 3 préstamos activos por usuario. Los usuarios con préstamos vencidos o suspendidos no pueden pedir libros.</span>
+          </div>
+
+          <button class="btn btn-primary btn-block mt-2" (click)="registrar()" [disabled]="registrando()">
+            @if (registrando()) { <span class="spinner"></span> Registrando… } @else { <lucide-icon name="check" [size]="17" /> Registrar préstamo }
+          </button>
+        </div>
+      </aside>
+    } @else {
+      <aside class="card registro">
+        <div class="card-header"><h2><lucide-icon name="info" [size]="18" /> ¿Cómo pedir un libro?</h2></div>
+        <div class="card-body pasos">
+          <div><span>1</span><p>Busca el libro en el <a routerLink="/catalogo">catálogo</a> y revisa si tiene ejemplares disponibles.</p></div>
+          <div><span>2</span><p>Acércate al módulo de atención con tu DNI. El bibliotecario registrará el préstamo por 14 días.</p></div>
+          <div><span>3</span><p>Si no hay ejemplares, <strong>resérvalo</strong>: cuando se devuelva uno, se te apartará por 3 días.</p></div>
+        </div>
+      </aside>
+    }
+  </div>
+</div>

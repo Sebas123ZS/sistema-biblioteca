@@ -1,0 +1,143 @@
+<div class="page">
+  <div class="page-head">
+    <div>
+      <h1>{{ admin ? 'Gestión de reservas' : 'Mis reservas' }}</h1>
+      <p>Controla las solicitudes de reserva y su disponibilidad</p>
+    </div>
+  </div>
+
+  <div class="stats stagger">
+    <app-stat-card style="--i:0" icono="hourglass" etiqueta="Reservas pendientes" [valor]="conteos()['PENDIENTE'] ?? 0" tono="warning" detalle="En lista de espera" />
+    <app-stat-card style="--i:1" icono="bookmark" etiqueta="Listas para retirar" [valor]="conteos()['DISPONIBLE'] ?? 0" tono="success" detalle="Apartadas por 3 días" />
+    <app-stat-card style="--i:2" icono="calendar-check" etiqueta="Atendidas" [valor]="conteos()['ATENDIDA'] ?? 0" tono="info" detalle="Convertidas en préstamo" />
+    <app-stat-card style="--i:3" icono="trending-up" etiqueta="Total" [valor]="conteos()[''] ?? 0" tono="primary" />
+  </div>
+
+  <div class="chips mb-2">
+    @for (f of filtros; track f.valor) {
+      <button class="chip" [class.active]="estado() === f.valor" (click)="filtrar(f.valor)">
+        {{ f.texto }} <span class="count">{{ conteos()[f.valor] ?? '…' }}</span>
+      </button>
+    }
+  </div>
+
+  <div class="split">
+    <section class="card">
+      <div class="card-header"><h2><lucide-icon name="calendar-clock" [size]="18" /> Listado de reservas</h2></div>
+      @if (pagina(); as p) {
+        @if (p.content.length) {
+          <div class="table-wrap">
+            <table class="table">
+              <thead><tr>@if (admin) {<th>Usuario</th>}<th>Libro</th><th>Reservado / retirar hasta</th><th>Estado</th><th class="text-right">Acciones</th></tr></thead>
+              <tbody>
+                @for (r of p.content; track r.id; let i = $index) {
+                  <tr [style.--i]="i">
+                    @if (admin) {
+                      <td><div class="flex"><span class="avatar">{{ r.usuarioNombre[0] }}</span><span class="nombre">{{ r.usuarioNombre }}</span></div></td>
+                    }
+                    <td><div class="flex"><app-book-cover [url]="r.libroPortadaUrl" [titulo]="r.libroTitulo" [ancho]="28" /><span><span class="titulo">{{ r.libroTitulo }}</span><span class="sub mono">{{ r.codigo }}</span></span></div></td>
+                    <td>{{ r.fechaReserva | date: 'dd/MM/yy HH:mm' }}
+                      <span class="sub">{{ r.fechaExpiracion ? 'Retirar hasta ' + (r.fechaExpiracion | date: 'dd/MM/yyyy') : 'En espera' }}</span></td>
+                    <td><app-estado-badge [estado]="r.estado" /></td>
+                    <td>
+                      <div class="actions">
+                        @if (r.estado === 'PENDIENTE' || r.estado === 'DISPONIBLE') {
+                          <button class="icon-btn danger" (click)="cancelar(r)" title="Cancelar reserva"><lucide-icon name="ban" [size]="15" /></button>
+                        }
+                        @if (admin && r.estado === 'DISPONIBLE') {
+                          <a class="icon-btn success" routerLink="/prestamos" title="Registrar préstamo"><lucide-icon name="arrow-left-right" [size]="15" /></a>
+                        }
+                      </div>
+                    </td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        } @else {
+          <app-empty-state icono="calendar-clock" titulo="No hay reservas" texto="No se encontraron reservas con este filtro" />
+        }
+        <app-pagination [pagina]="p.page" [totalPaginas]="p.totalPages" [total]="p.totalElements" [tamano]="p.size"
+                        etiqueta="reservas" (cambiar)="cargar($event)" />
+      }
+    </section>
+
+    <div class="col">
+      <!-- ===== Registrar (CU-11) ===== -->
+      <section class="card">
+        <div class="card-header"><h2><lucide-icon name="plus" [size]="18" /> Registrar reserva</h2></div>
+        <div class="card-body">
+          @if (admin) {
+            <div class="field">
+              <label>Usuario <span class="req">*</span></label>
+              @if (usuarioSel(); as u) {
+                <div class="seleccion"><span class="avatar">{{ u.nombres[0] }}{{ u.apellidos[0] }}</span>
+                  <div class="grow"><strong>{{ u.nombreCompleto }}</strong><span class="muted small">{{ u.correo }}</span></div>
+                  <button class="icon-btn" (click)="usuarioSel.set(null)"><lucide-icon name="x" [size]="15" /></button></div>
+              } @else {
+                <app-search-select [buscar]="buscarUsuarios" placeholder="Buscar usuario…" [invalido]="intento()"
+                                   [deshabilitar]="usuarioNoHabilitado" (seleccionado)="usuarioSel.set($event)">
+                  <ng-template let-u>
+                    <div class="flex"><span class="avatar">{{ u.nombres[0] }}{{ u.apellidos[0] }}</span>
+                      <span class="grow"><strong>{{ u.nombreCompleto }}</strong><br /><span class="muted small">{{ u.correo }}</span></span>
+                      @if (u.estado !== 'ACTIVO') { <app-estado-badge [estado]="u.estado" /> }</div>
+                  </ng-template>
+                </app-search-select>
+                @if (intento()) { <span class="error-text">Seleccione un usuario</span> }
+              }
+            </div>
+          }
+          <div class="field">
+            <label>Libro (sin disponibilidad) <span class="req">*</span></label>
+            @if (libroSel(); as l) {
+              <div class="seleccion"><app-book-cover [url]="l.portadaUrl" [titulo]="l.titulo" [ancho]="40" />
+                <div class="grow"><strong>{{ l.titulo }}</strong><span class="small text-danger">{{ l.cantidadDisponible }} ejemplares disponibles</span></div>
+                <button class="icon-btn" (click)="libroSel.set(null)"><lucide-icon name="x" [size]="15" /></button></div>
+            } @else {
+              <app-search-select [buscar]="buscarLibros" placeholder="Buscar libro…" [invalido]="intento()"
+                                 [deshabilitar]="libroConStock" (seleccionado)="libroSel.set($event)">
+                <ng-template let-l>
+                  <div class="flex"><app-book-cover [url]="l.portadaUrl" [titulo]="l.titulo" [ancho]="26" />
+                    <span class="grow"><strong>{{ l.titulo }}</strong><br />
+                      <span class="small" [class.text-success]="l.disponible" [class.text-danger]="!l.disponible">
+                        {{ l.disponible ? 'Disponible: pídalo en préstamo' : 'Sin ejemplares · se puede reservar' }}</span></span></div>
+                </ng-template>
+              </app-search-select>
+              @if (intento()) { <span class="error-text">Seleccione un libro sin ejemplares disponibles</span> }
+            }
+          </div>
+          <div class="alert warning">
+            <lucide-icon name="info" [size]="16" />
+            <span>Solo se reservan libros sin ejemplares. El usuario no debe tener otra reserva activa del mismo libro.</span>
+          </div>
+          <button class="btn btn-primary btn-block mt-2" (click)="registrar()" [disabled]="registrando()">
+            @if (registrando()) { <span class="spinner"></span> } @else { <lucide-icon name="calendar-check" [size]="17" /> } Registrar reserva
+          </button>
+        </div>
+      </section>
+
+      <!-- ===== Avisos (CU-12) ===== -->
+      @if (disponibles().length) {
+        <section class="card mt-2 aviso">
+          <div class="card-header"><h2><lucide-icon name="bell" [size]="18" /> Reserva disponible</h2></div>
+          <div class="card-body">
+            @for (r of disponibles(); track r.id) {
+              <div class="disp">
+                <div class="alert success"><lucide-icon name="circle-check" [size]="16" />
+                  <span><strong>El libro reservado ya está disponible para retiro.</strong> Tras la devolución de un ejemplar el sistema cambió la reserva de "Pendiente" a "Disponible".</span></div>
+                <div class="flex mt-1">
+                  <app-book-cover [url]="r.libroPortadaUrl" [titulo]="r.libroTitulo" [ancho]="40" />
+                  <dl class="kv grow">
+                    <dt>Libro</dt><dd>{{ r.libroTitulo }}</dd>
+                    @if (admin) { <dt>Usuario</dt><dd>{{ r.usuarioNombre }}</dd> }
+                    <dt>Retirar hasta</dt><dd>{{ r.fechaExpiracion | date: 'dd/MM/yyyy' }}</dd>
+                  </dl>
+                </div>
+              </div>
+            }
+          </div>
+        </section>
+      }
+    </div>
+  </div>
+</div>

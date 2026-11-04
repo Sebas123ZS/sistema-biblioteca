@@ -1,0 +1,257 @@
+<div class="page">
+  <div class="page-head">
+    <div>
+      <h1>{{ admin ? 'Gestión de libros' : 'Catálogo de la biblioteca' }}</h1>
+      <p>{{ admin ? 'Administra el catálogo bibliográfico y la disponibilidad de ejemplares'
+                  : 'Busca libros, revisa su disponibilidad y resérvalos si están prestados' }}</p>
+    </div>
+    @if (admin) {
+      <button class="btn btn-primary" (click)="abrirNuevo()"><lucide-icon name="book-plus" [size]="17" /> Registrar libro</button>
+    }
+  </div>
+
+  @if (admin && resumen(); as r) {
+    <div class="stats stagger">
+      <app-stat-card style="--i:0" icono="book-open" etiqueta="Total de títulos" [valor]="r.totalTitulos" tono="primary" />
+      <app-stat-card style="--i:1" icono="book-copy" etiqueta="Ejemplares" [valor]="r.totalEjemplares" tono="info" />
+      <app-stat-card style="--i:2" icono="circle-check" etiqueta="Disponibles" [valor]="r.ejemplaresDisponibles" tono="success" />
+      <app-stat-card style="--i:3" icono="ban" etiqueta="Prestados o apartados" [valor]="agotados()" tono="danger" />
+    </div>
+  }
+
+  <section class="card">
+    <div class="card-header">
+      <h2><lucide-icon name="library" [size]="18" /> {{ admin ? 'Listado de libros' : 'Explorar' }}</h2>
+      <div class="vista">
+        <button class="icon-btn" [class.on]="vista() === 'grid'" (click)="cambiarVista('grid')" aria-label="Cuadrícula"><lucide-icon name="layout-grid" [size]="16" /></button>
+        <button class="icon-btn" [class.on]="vista() === 'tabla'" (click)="cambiarVista('tabla')" aria-label="Tabla"><lucide-icon name="list" [size]="16" /></button>
+      </div>
+    </div>
+
+    <div class="toolbar">
+      <div class="input-icon">
+        <lucide-icon name="search" [size]="16" />
+        <input class="input" placeholder="Buscar por título, autor o ISBN…" [(ngModel)]="filtros.q" (input)="buscarConRetraso()" />
+      </div>
+      <select class="select" [(ngModel)]="filtros.categoriaId" (change)="cargar(0)">
+        <option [ngValue]="null">Todas las categorías</option>
+        @for (c of categorias(); track c.id) { <option [ngValue]="c.id">{{ c.nombre }}</option> }
+      </select>
+      <select class="select" [(ngModel)]="filtros.disponible" (change)="cargar(0)">
+        <option value="">Todos los estados</option>
+        <option value="true">Disponibles</option>
+        <option value="false">Sin ejemplares</option>
+      </select>
+      <button class="btn btn-ghost" (click)="limpiarFiltros()"><lucide-icon name="rotate-ccw" [size]="15" /> Limpiar</button>
+    </div>
+
+    @if (pagina(); as p) {
+      @if (p.content.length === 0) {
+        <app-empty-state icono="book-open" titulo="No se encontraron libros" texto="Pruebe con otros filtros de búsqueda" />
+      } @else if (vista() === 'grid') {
+        <div class="grid-libros" [class.loading]="cargando()">
+          @for (l of p.content; track l.id; let i = $index) {
+            <article class="libro-card" [style.--i]="i" (click)="verDetalle(l)">
+              <div class="cover-wrap">
+                <app-book-cover [url]="l.portadaUrl" [titulo]="l.titulo" [ancho]="104" />
+              </div>
+              <div class="info">
+                <span class="badge primary cat">{{ l.categoriaNombre }}</span>
+                <h3 [title]="l.titulo">{{ l.titulo }}</h3>
+                <p class="muted small autor">{{ l.autores.length ? l.autores[0].nombreCompleto : '—' }}</p>
+                <div class="dispo">
+                  <div class="meter"><span [style.width.%]="porcentaje(l)" [class.zero]="!l.disponible"></span></div>
+                  <span class="small" [class.text-success]="l.disponible" [class.text-danger]="!l.disponible">
+                    {{ l.disponible ? l.cantidadDisponible + ' de ' + l.cantidadTotal + ' disponibles' : 'Sin ejemplares' }}
+                  </span>
+                </div>
+              </div>
+              <div class="hover-actions" (click)="$event.stopPropagation()">
+                @if (admin) {
+                  <button class="icon-btn" (click)="abrirEditar(l)" aria-label="Editar"><lucide-icon name="pencil" [size]="15" /></button>
+                  <button class="icon-btn danger" (click)="darDeBaja(l)" aria-label="Dar de baja"><lucide-icon name="trash-2" [size]="15" /></button>
+                } @else if (!l.disponible) {
+                  <button class="btn btn-sm btn-primary" (click)="reservar(l)"><lucide-icon name="bookmark" [size]="14" /> Reservar</button>
+                }
+              </div>
+            </article>
+          }
+        </div>
+      } @else {
+        <div class="table-wrap" [class.loading]="cargando()">
+          <table class="table">
+            <thead>
+              <tr>
+                <th>Código</th><th>Libro</th><th>Autor(es)</th><th>ISBN</th><th>Categoría</th>
+                <th class="text-right">Ejemplares</th><th>Estado</th><th class="text-right">Acciones</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (l of p.content; track l.id; let i = $index) {
+                <tr [style.--i]="i">
+                  <td class="mono muted">{{ l.codigo }}</td>
+                  <td>
+                    <div class="flex">
+                      <app-book-cover [url]="l.portadaUrl" [titulo]="l.titulo" [ancho]="30" />
+                      <strong class="titulo-tabla">{{ l.titulo }}</strong>
+                    </div>
+                  </td>
+                  <td class="small">{{ autoresTexto(l) }}</td>
+                  <td class="mono">{{ l.isbn }}</td>
+                  <td><span class="badge neutral">{{ l.categoriaNombre }}</span></td>
+                  <td class="text-right nowrap">
+                    <strong [class.text-success]="l.disponible" [class.text-danger]="!l.disponible">{{ l.cantidadDisponible }}</strong>
+                    <span class="muted"> / {{ l.cantidadTotal }}</span>
+                  </td>
+                  <td><span class="badge" [class.success]="l.disponible" [class.danger]="!l.disponible">{{ l.disponible ? 'Disponible' : 'No disponible' }}</span></td>
+                  <td>
+                    <div class="actions">
+                      <button class="icon-btn" (click)="verDetalle(l)" aria-label="Ver"><lucide-icon name="eye" [size]="15" /></button>
+                      @if (admin) {
+                        <button class="icon-btn" (click)="abrirEditar(l)" aria-label="Editar"><lucide-icon name="pencil" [size]="15" /></button>
+                        <button class="icon-btn danger" (click)="darDeBaja(l)" aria-label="Dar de baja"><lucide-icon name="trash-2" [size]="15" /></button>
+                      } @else if (!l.disponible) {
+                        <button class="icon-btn success" (click)="reservar(l)" aria-label="Reservar"><lucide-icon name="bookmark" [size]="15" /></button>
+                      }
+                    </div>
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      }
+      <app-pagination [pagina]="p.page" [totalPaginas]="p.totalPages" [total]="p.totalElements" [tamano]="p.size"
+                      etiqueta="libros" (cambiar)="cargar($event)" />
+    } @else {
+      <div class="card-body">
+        @for (i of [1, 2, 3, 4, 5]; track i) { <div class="skeleton" style="height: 42px; margin-bottom: 10px"></div> }
+      </div>
+    }
+  </section>
+</div>
+
+<!-- ===== Detalle ===== -->
+@if (detalle(); as l) {
+  <app-modal [titulo]="l.titulo" [subtitulo]="l.codigo + ' · ISBN ' + l.isbn" icono="book-open" [ancho]="620" (cerrar)="detalle.set(null)">
+    <div class="detalle">
+      <app-book-cover [url]="l.portadaUrl" [titulo]="l.titulo" [ancho]="130" />
+      <div class="grow">
+        <dl class="kv">
+          <dt>Autor(es)</dt><dd>{{ autoresTexto(l) }}</dd>
+          <dt>Categoría</dt><dd>{{ l.categoriaNombre }}</dd>
+          <dt>Editorial</dt><dd>{{ l.editorial || '—' }}</dd>
+          <dt>Año</dt><dd>{{ l.anioPublicacion || '—' }}</dd>
+          <dt>Registrado</dt><dd>{{ l.fechaRegistro | date: 'dd/MM/yyyy' }}</dd>
+        </dl>
+        <div class="divider"></div>
+        @if (disponibilidad(); as d) {
+          <div class="dispo-box">
+            <div><strong class="text-success">{{ d.cantidadDisponible }}</strong><span>disponibles</span></div>
+            <div><strong>{{ d.cantidadPrestada }}</strong><span>prestados</span></div>
+            <div><strong>{{ d.cantidadTotal }}</strong><span>en total</span></div>
+            <div><strong class="warn">{{ d.reservasEnEspera }}</strong><span>en espera</span></div>
+          </div>
+          @if (!d.disponible) {
+            <div class="alert warning mt-2">
+              <lucide-icon name="triangle-alert" [size]="17" />
+              <span>Actualmente no hay ejemplares disponibles. {{ admin ? '' : 'Puede registrar una reserva.' }}</span>
+            </div>
+          } @else if (!admin) {
+            <div class="alert success mt-2">
+              <lucide-icon name="circle-check" [size]="17" />
+              <span>Hay ejemplares disponibles. Acérquese al módulo de atención para solicitar el préstamo.</span>
+            </div>
+          }
+        } @else {
+          <div class="skeleton" style="height: 60px"></div>
+        }
+      </div>
+    </div>
+    <div modal-footer>
+      @if (admin) {
+        <button class="btn" (click)="abrirEditar(l)"><lucide-icon name="pencil" [size]="15" /> Editar</button>
+      } @else if (disponibilidad() && !disponibilidad()!.disponible) {
+        <button class="btn btn-primary" (click)="reservar(l)"><lucide-icon name="bookmark" [size]="15" /> Reservar</button>
+      }
+      <button class="btn" (click)="detalle.set(null)">Cerrar</button>
+    </div>
+  </app-modal>
+}
+
+<!-- ===== Formulario ===== -->
+@if (formAbierto()) {
+  <app-modal [titulo]="editando() ? 'Editar libro' : 'Registrar nuevo libro'" subtitulo="Los campos con * son obligatorios"
+             icono="book-plus" [ancho]="720" (cerrar)="formAbierto.set(false)">
+    <form [formGroup]="form" (ngSubmit)="guardar()" id="form-libro" class="form-libro">
+      <div class="preview">
+        <app-book-cover [url]="form.value.portadaUrl" [titulo]="form.value.titulo || 'Nuevo libro'" [ancho]="120" />
+        <span class="hint">Vista previa</span>
+      </div>
+      <div class="form-grid grow">
+        <div class="field full">
+          <label>Título <span class="req">*</span></label>
+          <input class="input" formControlName="titulo" [class.invalid]="invalido('titulo')" placeholder="Ej. Cien años de soledad" />
+          @if (invalido('titulo')) { <span class="error-text">{{ form.get('titulo')?.errors?.['servidor'] ?? 'El título es obligatorio' }}</span> }
+        </div>
+        <div class="field">
+          <label>ISBN <span class="req">*</span></label>
+          <input class="input mono" formControlName="isbn" [class.invalid]="invalido('isbn')" placeholder="978-84-376-0494-7" />
+          @if (invalido('isbn')) { <span class="error-text">{{ form.get('isbn')?.errors?.['servidor'] ?? 'ISBN inválido (10 o 13 dígitos)' }}</span> }
+        </div>
+        <div class="field">
+          <label>Categoría <span class="req">*</span></label>
+          <select class="select" formControlName="categoriaId" [class.invalid]="invalido('categoriaId')">
+            <option [ngValue]="null" disabled>Seleccione…</option>
+            @for (c of categorias(); track c.id) { <option [ngValue]="c.id">{{ c.nombre }}</option> }
+          </select>
+          @if (invalido('categoriaId')) { <span class="error-text">Seleccione una categoría</span> }
+        </div>
+        <div class="field full">
+          <label>Autor(es) <span class="req">*</span></label>
+          <div class="chips-autores">
+            @for (a of autoresSel(); track a.id) {
+              <span class="chip-autor">{{ a.nombreCompleto }}
+                <button type="button" (click)="quitarAutor(a.id)" aria-label="Quitar"><lucide-icon name="x" [size]="13" /></button>
+              </span>
+            }
+          </div>
+          <app-search-select [buscar]="buscarAutores" placeholder="Buscar autor para agregar…" [invalido]="autoresInvalidos()"
+                             [deshabilitar]="autorYaElegido" (seleccionado)="agregarAutor($event)">
+            <ng-template let-a>
+              <div class="flex"><span class="avatar">{{ a.nombres[0] }}{{ a.apellidos[0] }}</span>
+                <span><strong>{{ a.nombreCompleto }}</strong><br /><span class="muted small">{{ a.nacionalidad }}</span></span></div>
+            </ng-template>
+          </app-search-select>
+          @if (autoresInvalidos()) { <span class="error-text">Seleccione al menos un autor</span> }
+        </div>
+        <div class="field">
+          <label>Editorial</label>
+          <input class="input" formControlName="editorial" placeholder="Ej. Alfaguara" />
+        </div>
+        <div class="field">
+          <label>Año de publicación</label>
+          <input class="input" type="number" formControlName="anioPublicacion" [class.invalid]="invalido('anioPublicacion')" placeholder="Ej. 1967" />
+          @if (invalido('anioPublicacion')) { <span class="error-text">Año inválido</span> }
+        </div>
+        <div class="field">
+          <label>Cantidad de ejemplares <span class="req">*</span></label>
+          <input class="input" type="number" min="1" formControlName="cantidadTotal" [class.invalid]="invalido('cantidadTotal')" />
+          @if (invalido('cantidadTotal')) { <span class="error-text">{{ form.get('cantidadTotal')?.errors?.['servidor'] ?? 'Entre 1 y 500 ejemplares' }}</span> }
+          @if (editando(); as e) { <span class="hint">Prestados o apartados ahora: {{ e.cantidadTotal - e.cantidadDisponible }}</span> }
+        </div>
+        <div class="field">
+          <label>URL de portada</label>
+          <input class="input" formControlName="portadaUrl" placeholder="https://…" />
+        </div>
+      </div>
+    </form>
+    <div modal-footer>
+      <button class="btn" type="button" (click)="formAbierto.set(false)">Cancelar</button>
+      <button class="btn btn-primary" type="submit" form="form-libro" [disabled]="guardando()">
+        @if (guardando()) { <span class="spinner"></span> } @else { <lucide-icon name="save" [size]="16" /> }
+        {{ editando() ? 'Guardar cambios' : 'Registrar libro' }}
+      </button>
+    </div>
+  </app-modal>
+}

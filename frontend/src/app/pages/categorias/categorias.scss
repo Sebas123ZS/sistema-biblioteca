@@ -1,0 +1,6 @@
+.cats { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; }
+.cat { display: flex; gap: 14px; padding: 18px; animation: fadeUp .45s var(--ease) both; animation-delay: calc(var(--i) * 40ms);
+  &:hover .acc { opacity: 1; } }
+.ico { width: 46px; height: 46px; border-radius: 14px; display: grid; place-items: center; flex-shrink: 0;
+  background: hsl(var(--h) 85% 95%); color: hsl(var(--h) 60% 42%); }
+.acc { display: flex; flex-direction: column; gap: 6px; opacity: .4; transition: opacity .2s; }

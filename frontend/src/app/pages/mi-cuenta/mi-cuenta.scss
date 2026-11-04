@@ -1,0 +1,6 @@
+.hero { display: flex; gap: 20px; align-items: center; padding: 24px; margin-bottom: 20px; flex-wrap: wrap;
+  background: radial-gradient(80% 120% at 0% 0%, var(--primary-50), #fff 60%);
+  .avatar.lg { width: 76px; height: 76px; font-size: 26px; background: linear-gradient(135deg, #2a7cf0, #1857b5); color: #fff; box-shadow: 0 10px 24px rgba(29, 111, 224, .35); }
+  h1 { font-size: 26px; }
+  .wrap { flex-wrap: wrap; gap: 14px; }
+  span.small { display: inline-flex; align-items: center; gap: 5px; } }

@@ -1,0 +1,75 @@
+<div class="aurora" aria-hidden="true">
+  <span class="blob b1"></span><span class="blob b2"></span><span class="blob b3"></span>
+  <span class="grid"></span>
+  @for (p of particulas; track $index) {
+    <span class="particle" [style.left.%]="p.left" [style.width.px]="p.size" [style.height.px]="p.size"
+          [style.animation-delay.s]="p.delay" [style.animation-duration.s]="p.dur"></span>
+  }
+</div>
+
+<header class="brand">
+  <span class="logo"><lucide-icon name="book-open" [size]="26" /></span>
+  <div>
+    <strong>Biblioteca</strong>
+    <small>Sistema de Gestión</small>
+  </div>
+</header>
+
+<section class="hero">
+  <h1>
+    Tu biblioteca,<br />ahora
+    <span class="rotador">
+      @for (w of palabras; track w; let i = $index) {
+        <span class="word" [class.on]="i === palabra()" [class.out]="i === (palabra() + palabras.length - 1) % palabras.length">{{ w }}</span>
+      }
+    </span>
+  </h1>
+  <p>Consulta el catálogo, revisa la disponibilidad en tiempo real y reserva tus libros desde cualquier lugar.</p>
+</section>
+
+<!-- ===== Escena 3D ===== -->
+<div class="scene" aria-hidden="true">
+  <div class="stage" [style.transform]="'rotateX(' + (14 - tiltY() * 18) + 'deg) rotateY(' + (tiltX() * 22) + 'deg)'">
+    <div class="book">
+      <div class="half left"><span class="lines"></span></div>
+      <div class="half right"><span class="lines"></span></div>
+      <div class="flip f1"><span class="front"></span><span class="back"></span></div>
+      <div class="flip f2"><span class="front"></span><span class="back"></span></div>
+      <div class="flip f3"><span class="front"></span><span class="back"></span></div>
+      <span class="spine"></span>
+      <span class="glow"></span>
+    </div>
+  </div>
+
+  <div class="fchip c1" [style.translate]="(tiltX() * -26) + 'px ' + (tiltY() * -20) + 'px'">
+    <span class="ic blue"><lucide-icon name="book-copy" [size]="16" /></span>
+    <span><b>Catálogo</b><small>Disponibilidad en vivo</small></span>
+  </div>
+  <div class="fchip c2" [style.translate]="(tiltX() * 30) + 'px ' + (tiltY() * 24) + 'px'">
+    <span class="ic amber"><lucide-icon name="bookmark" [size]="16" /></span>
+    <span><b>Reservas</b><small>Te avisamos al llegar</small></span>
+  </div>
+  <div class="fchip c3" [style.translate]="(tiltX() * -18) + 'px ' + (tiltY() * 28) + 'px'">
+    <span class="ic green"><lucide-icon name="shield-check" [size]="16" /></span>
+    <span><b>Acceso seguro</b><small>Roles con JWT</small></span>
+  </div>
+</div>
+
+<!-- ===== Frases ===== -->
+<footer class="quotes">
+  <div class="bars">
+    @for (c of citas; track $index; let i = $index) {
+      <button class="bar" [class.done]="i < cita()" [class.on]="i === cita()" (click)="irACita(i)" [attr.aria-label]="'Frase ' + (i + 1)">
+        <span></span>
+      </button>
+    }
+  </div>
+  @for (c of citas; track $index; let i = $index) {
+    @if (i === cita()) {
+      <blockquote class="quote">
+        <p>“{{ c.texto }}”</p>
+        <cite>— {{ c.autor }}</cite>
+      </blockquote>
+    }
+  }
+</footer>

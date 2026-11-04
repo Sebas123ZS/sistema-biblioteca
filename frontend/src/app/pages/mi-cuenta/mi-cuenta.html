@@ -1,0 +1,60 @@
+<div class="page">
+  @if (resumen(); as r) {
+    <section class="card hero">
+      <span class="avatar lg">{{ r.usuario.nombres[0] }}{{ r.usuario.apellidos[0] }}</span>
+      <div class="grow">
+        <h1>{{ r.usuario.nombreCompleto }}</h1>
+        <div class="flex mt-1 wrap">
+          <app-estado-badge [estado]="r.usuario.estado" />
+          <span class="muted small"><lucide-icon name="id-card" [size]="14" /> {{ r.usuario.documento }}</span>
+          <span class="muted small"><lucide-icon name="mail" [size]="14" /> {{ r.usuario.correo }}</span>
+          <span class="muted small"><lucide-icon name="calendar" [size]="14" /> Lector desde {{ r.usuario.fechaRegistro | date: 'MMMM yyyy' }}</span>
+        </div>
+      </div>
+      <a class="btn btn-primary" routerLink="/catalogo"><lucide-icon name="library-big" [size]="17" /> Ir al catálogo</a>
+    </section>
+
+    @if (r.usuario.estado !== 'ACTIVO') {
+      <div class="alert danger mb-2"><lucide-icon name="triangle-alert" [size]="17" />
+        <span>Tu cuenta está {{ r.usuario.estado.toLowerCase() }}: no puedes pedir préstamos ni reservas. Acércate a la biblioteca.</span></div>
+    } @else if (r.prestamosVencidos > 0) {
+      <div class="alert danger mb-2"><lucide-icon name="triangle-alert" [size]="17" />
+        <span>Tienes {{ r.prestamosVencidos }} préstamo(s) vencido(s). Devuélvelos para poder pedir nuevos libros.</span></div>
+    }
+
+    <div class="stats stagger">
+      <app-stat-card style="--i:0" icono="book-open" etiqueta="Préstamos activos" [valor]="r.prestamosActivos" tono="primary" detalle="Máximo 3 a la vez" />
+      <app-stat-card style="--i:1" icono="triangle-alert" etiqueta="Vencidos" [valor]="r.prestamosVencidos" tono="danger" />
+      <app-stat-card style="--i:2" icono="circle-check" etiqueta="Libros leídos" [valor]="r.prestamosDevueltos" tono="success" />
+      <app-stat-card style="--i:3" icono="bookmark" etiqueta="Reservas activas" [valor]="r.reservasActivas" tono="warning" />
+    </div>
+  }
+
+  <section class="card">
+    <div class="card-header"><h2><lucide-icon name="history" [size]="18" /> Mi historial de préstamos</h2></div>
+    @if (historial(); as h) {
+      @if (h.content.length) {
+        <div class="table-wrap">
+          <table class="table">
+            <thead><tr><th>Libro</th><th>Préstamo</th><th>Vencimiento</th><th>Devuelto</th><th>Estado</th></tr></thead>
+            <tbody>
+              @for (p of h.content; track p.id; let i = $index) {
+                <tr [style.--i]="i">
+                  <td><div class="flex"><app-book-cover [url]="p.libroPortadaUrl" [titulo]="p.libroTitulo" [ancho]="28" /><strong>{{ p.libroTitulo }}</strong></div></td>
+                  <td>{{ p.fechaPrestamo | date: 'dd/MM/yyyy' }}</td>
+                  <td>{{ p.fechaVencimiento | date: 'dd/MM/yyyy' }}</td>
+                  <td>{{ p.fechaDevolucion ? (p.fechaDevolucion | date: 'dd/MM/yyyy') : '—' }}</td>
+                  <td><app-estado-badge [estado]="p.estado" /></td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      } @else {
+        <app-empty-state icono="book-open" titulo="Aún no tienes préstamos" texto="Explora el catálogo y acércate a la biblioteca" />
+      }
+      <app-pagination [pagina]="h.page" [totalPaginas]="h.totalPages" [total]="h.totalElements" [tamano]="h.size"
+                      etiqueta="préstamos" (cambiar)="cargarHistorial($event)" />
+    }
+  </section>
+</div>

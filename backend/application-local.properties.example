@@ -1,0 +1,21 @@
+# =====================================================================
+#  Credenciales locales del backend
+#  1) Copie este archivo y renómbrelo a:  application-local.properties
+#     (en la misma carpeta "backend", junto a pom.xml)
+#  2) Escriba la contraseña de SU usuario de MySQL.
+#  El archivo application-local.properties está en .gitignore:
+#  nunca se sube al repositorio.
+# =====================================================================
+
+DB_USER=root
+DB_PASSWORD=escriba_aqui_su_contrasena_de_mysql
+
+# Opcional (si cambió el host, puerto o nombre de la base)
+# DB_HOST=localhost
+# DB_PORT=3306
+# DB_NAME=biblioteca
+
+# Opcional: clave fija para firmar los JWT (Base64, mínimo 32 bytes).
+# Si no se define, se genera una clave aleatoria en cada arranque.
+# Para generar una:  openssl rand -base64 48
+# JWT_SECRET=

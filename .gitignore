@@ -1,0 +1,16 @@
+# Credenciales y configuración local
+**/application-local.properties
+.env
+*.env
+
+# Compilados y dependencias
+backend/target/
+frontend/node_modules/
+frontend/dist/
+frontend/.angular/
+
+# IDE y sistema
+.idea/
+*.iml
+.DS_Store
+Thumbs.db

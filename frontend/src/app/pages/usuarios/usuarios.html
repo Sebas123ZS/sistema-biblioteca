@@ -1,0 +1,176 @@
+<div class="page">
+  <div class="page-head">
+    <div>
+      <h1>Gestión de usuarios</h1>
+      <p>Administra los perfiles de lectores y bibliotecarios y consulta su historial</p>
+    </div>
+    <button class="btn btn-primary" (click)="abrir()"><lucide-icon name="user-plus" [size]="17" /> Registrar usuario</button>
+  </div>
+
+  <div class="split">
+    <section class="card">
+      <div class="card-header"><h2><lucide-icon name="users" [size]="18" /> Listado de usuarios</h2></div>
+      <div class="toolbar">
+        <div class="input-icon">
+          <lucide-icon name="search" [size]="16" />
+          <input class="input" placeholder="Buscar por nombre, documento o correo…" [(ngModel)]="filtros.q" (input)="buscarConRetraso()" />
+        </div>
+        <select class="select" [(ngModel)]="filtros.estado" (change)="cargar(0)">
+          <option value="">Todos los estados</option>
+          <option value="ACTIVO">Activos</option>
+          <option value="SUSPENDIDO">Suspendidos</option>
+          <option value="INACTIVO">Inactivos</option>
+        </select>
+        <select class="select" [(ngModel)]="filtros.rol" (change)="cargar(0)">
+          <option value="">Todos los roles</option>
+          <option value="LECTOR">Lectores</option>
+          <option value="BIBLIOTECARIO">Bibliotecarios</option>
+        </select>
+      </div>
+
+      @if (pagina(); as p) {
+        @if (p.content.length) {
+          <div class="table-wrap">
+            <table class="table">
+              <thead><tr><th>Usuario</th><th>Documento</th><th>Rol</th><th>Estado</th><th class="text-right">Acciones</th></tr></thead>
+              <tbody>
+                @for (u of p.content; track u.id; let i = $index) {
+                  <tr [style.--i]="i" class="clickable" [class.selected]="seleccionado()?.usuario?.id === u.id" (click)="seleccionar(u)">
+                    <td><div class="flex"><span class="avatar">{{ iniciales(u) }}</span><div><strong>{{ u.nombreCompleto }}</strong><span class="sub">{{ u.correo }}</span></div></div></td>
+                    <td class="mono">{{ u.documento }}<span class="sub">{{ u.codigo }}</span></td>
+                    <td><app-estado-badge [estado]="u.rol" /></td>
+                    <td><app-estado-badge [estado]="u.estado" /></td>
+                    <td (click)="$event.stopPropagation()">
+                      <div class="actions">
+                        <button class="icon-btn" (click)="abrir(u)" aria-label="Editar"><lucide-icon name="pencil" [size]="15" /></button>
+                        @if (u.id !== auth.usuario()?.id) {
+                          @if (u.estado === 'ACTIVO') {
+                            <button class="icon-btn danger" (click)="cambiarEstado(u, 'SUSPENDIDO')" title="Suspender"><lucide-icon name="user-x" [size]="15" /></button>
+                          } @else {
+                            <button class="icon-btn success" (click)="cambiarEstado(u, 'ACTIVO')" title="Activar"><lucide-icon name="user-check" [size]="15" /></button>
+                          }
+                        }
+                      </div>
+                    </td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        } @else {
+          <app-empty-state icono="users" titulo="No se encontraron usuarios" />
+        }
+        <app-pagination [pagina]="p.page" [totalPaginas]="p.totalPages" [total]="p.totalElements" [tamano]="p.size"
+                        etiqueta="usuarios" (cambiar)="cargar($event)" />
+      }
+    </section>
+
+    <!-- ===== Perfil ===== -->
+    <aside class="perfil-col">
+      @if (seleccionado(); as s) {
+        <section class="card perfil anim-fade-up">
+          <div class="perfil-top">
+            <span class="avatar lg">{{ iniciales(s.usuario) }}</span>
+            <div>
+              <h2>{{ s.usuario.nombreCompleto }}</h2>
+              <div class="flex mt-1"><app-estado-badge [estado]="s.usuario.estado" /><app-estado-badge [estado]="s.usuario.rol" /></div>
+            </div>
+          </div>
+          <div class="card-body">
+            <ul class="datos">
+              <li><lucide-icon name="id-card" [size]="16" /><span>{{ s.usuario.documento }}</span></li>
+              <li><lucide-icon name="mail" [size]="16" /><span>{{ s.usuario.correo }}</span></li>
+              <li><lucide-icon name="phone" [size]="16" /><span>{{ s.usuario.telefono || '—' }}</span></li>
+              <li><lucide-icon name="map-pin" [size]="16" /><span>{{ s.usuario.direccion || '—' }}</span></li>
+              <li><lucide-icon name="calendar" [size]="16" /><span>Desde el {{ s.usuario.fechaRegistro | date: 'dd/MM/yyyy' }}</span></li>
+            </ul>
+            <div class="mini-stats">
+              <div><strong>{{ s.prestamosActivos }}</strong><span>Activos</span></div>
+              <div class="danger"><strong>{{ s.prestamosVencidos }}</strong><span>Vencidos</span></div>
+              <div class="ok"><strong>{{ s.prestamosDevueltos }}</strong><span>Devueltos</span></div>
+              <div class="warn"><strong>{{ s.reservasActivas }}</strong><span>Reservas</span></div>
+            </div>
+          </div>
+        </section>
+
+        <section class="card mt-2 anim-fade-up">
+          <div class="card-header"><h2><lucide-icon name="history" [size]="18" /> Historial de préstamos</h2></div>
+          <div class="card-body">
+            @for (h of historial(); track h.id; let i = $index) {
+              <div class="hist" [style.--i]="i">
+                <div class="grow">
+                  <strong>{{ h.libroTitulo }}</strong>
+                  <span class="muted small">{{ h.fechaPrestamo | date: 'dd/MM/yyyy' }} → {{ (h.fechaDevolucion || h.fechaVencimiento) | date: 'dd/MM/yyyy' }}</span>
+                </div>
+                <app-estado-badge [estado]="h.estado" />
+              </div>
+            } @empty {
+              <app-empty-state icono="history" titulo="Sin préstamos registrados" />
+            }
+          </div>
+        </section>
+      }
+    </aside>
+  </div>
+</div>
+
+@if (formAbierto()) {
+  <app-modal [titulo]="editando() ? 'Editar usuario' : 'Registrar usuario'" subtitulo="Los campos con * son obligatorios"
+             icono="user-plus" [ancho]="680" (cerrar)="formAbierto.set(false)">
+    <form id="form-usuario" [formGroup]="form" (ngSubmit)="guardar()" class="form-grid">
+      <div class="field">
+        <label>Nombres <span class="req">*</span></label>
+        <input class="input" formControlName="nombres" [class.invalid]="invalido('nombres')" />
+        @if (invalido('nombres')) { <span class="error-text">{{ err('nombres', 'Ingrese los nombres') }}</span> }
+      </div>
+      <div class="field">
+        <label>Apellidos <span class="req">*</span></label>
+        <input class="input" formControlName="apellidos" [class.invalid]="invalido('apellidos')" />
+        @if (invalido('apellidos')) { <span class="error-text">{{ err('apellidos', 'Ingrese los apellidos') }}</span> }
+      </div>
+      <div class="field">
+        <label>Documento (DNI) <span class="req">*</span></label>
+        <input class="input mono" formControlName="documento" maxlength="12" [class.invalid]="invalido('documento')" />
+        @if (invalido('documento')) { <span class="error-text">{{ err('documento', 'De 8 a 12 dígitos') }}</span> }
+      </div>
+      <div class="field">
+        <label>Correo <span class="req">*</span></label>
+        <input class="input" type="email" formControlName="correo" [class.invalid]="invalido('correo')" />
+        @if (invalido('correo')) { <span class="error-text">{{ err('correo', 'Correo inválido') }}</span> }
+      </div>
+      <div class="field">
+        <label>Teléfono</label>
+        <input class="input" formControlName="telefono" [class.invalid]="invalido('telefono')" />
+        @if (invalido('telefono')) { <span class="error-text">Teléfono inválido</span> }
+      </div>
+      <div class="field">
+        <label>Rol <span class="req">*</span></label>
+        <select class="select" formControlName="rol">
+          <option value="LECTOR">Lector</option>
+          <option value="BIBLIOTECARIO">Bibliotecario</option>
+        </select>
+      </div>
+      <div class="field full">
+        <label>Dirección</label>
+        <input class="input" formControlName="direccion" />
+      </div>
+      <div class="field">
+        <label>Usuario de acceso <span class="req">*</span></label>
+        <input class="input" formControlName="username" autocomplete="off" [class.invalid]="invalido('username')" />
+        @if (invalido('username')) { <span class="error-text">{{ err('username', '4 a 50 caracteres: letras, números, . _ -') }}</span> }
+      </div>
+      <div class="field">
+        <label>Contraseña @if (!editando()) { <span class="req">*</span> }</label>
+        <input class="input" type="password" formControlName="password" autocomplete="new-password" [class.invalid]="invalido('password')"
+               [placeholder]="editando() ? 'Dejar vacío para no cambiarla' : 'Mínimo 6 caracteres'" />
+        @if (invalido('password')) { <span class="error-text">Mínimo 6 caracteres</span> }
+      </div>
+    </form>
+    <div modal-footer>
+      <button class="btn" (click)="formAbierto.set(false)">Cancelar</button>
+      <button class="btn btn-primary" type="submit" form="form-usuario" [disabled]="guardando()">
+        @if (guardando()) { <span class="spinner"></span> } @else { <lucide-icon name="save" [size]="16" /> } Guardar
+      </button>
+    </div>
+  </app-modal>
+}

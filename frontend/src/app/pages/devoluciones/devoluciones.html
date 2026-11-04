@@ -1,0 +1,117 @@
+<div class="page">
+  <div class="page-head">
+    <div>
+      <h1>Gestión de devoluciones</h1>
+      <p>Registra la devolución de libros y actualiza la disponibilidad del catálogo</p>
+    </div>
+  </div>
+
+  <div class="stats stagger">
+    <app-stat-card style="--i:0" icono="undo-2" etiqueta="Devoluciones hoy" [valor]="hoyCount()" tono="primary" />
+    <app-stat-card style="--i:1" icono="clock" etiqueta="Préstamos por devolver" [valor]="totalActivos() + totalVencidos()" tono="warning" />
+    <app-stat-card style="--i:2" icono="triangle-alert" etiqueta="Con retraso" [valor]="totalVencidos()" tono="danger" />
+    <app-stat-card style="--i:3" icono="book-copy" etiqueta="Devoluciones registradas" [valor]="historial()?.totalElements ?? 0" tono="success" />
+  </div>
+
+  <section class="card mb-2">
+    <div class="card-header"><h2><lucide-icon name="search" [size]="18" /> Buscar préstamo pendiente</h2></div>
+    <div class="toolbar">
+      <div class="input-icon">
+        <lucide-icon name="search" [size]="16" />
+        <input class="input" placeholder="Buscar por usuario, DNI o libro…" [(ngModel)]="q" (keyup.enter)="buscarPrestamos()" />
+      </div>
+      <button class="btn btn-primary" (click)="buscarPrestamos()">
+        @if (buscando()) { <span class="spinner"></span> } @else { <lucide-icon name="search" [size]="16" /> } Buscar
+      </button>
+    </div>
+    <div class="pendientes">
+      @for (p of pendientes(); track p.id; let i = $index) {
+        <button class="pend" [class.on]="seleccionado()?.id === p.id" [class.late]="p.estado === 'VENCIDO'" [style.--i]="i" (click)="elegir(p)">
+          <app-book-cover [url]="p.libroPortadaUrl" [titulo]="p.libroTitulo" [ancho]="34" />
+          <span class="grow">
+            <strong>{{ p.libroTitulo }}</strong>
+            <span class="muted small">{{ p.usuarioNombre }} · vence {{ p.fechaVencimiento | date: 'dd/MM' }}</span>
+          </span>
+          <app-estado-badge [estado]="p.estado" />
+        </button>
+      } @empty {
+        <app-empty-state icono="circle-check" titulo="Sin préstamos pendientes" texto="No hay libros por devolver con ese criterio" />
+      }
+    </div>
+  </section>
+
+  <div class="dos">
+    <!-- ===== Registrar ===== -->
+    <section class="card">
+      <div class="card-header"><h2><lucide-icon name="rotate-ccw" [size]="18" /> Registrar devolución</h2></div>
+      <div class="card-body">
+        @if (seleccionado(); as p) {
+          <div class="resumen anim-fade-in">
+            <app-book-cover [url]="p.libroPortadaUrl" [titulo]="p.libroTitulo" [ancho]="78" />
+            <dl class="kv grow">
+              <dt>Préstamo</dt><dd class="mono">{{ p.codigo }}</dd>
+              <dt>Usuario</dt><dd>{{ p.usuarioNombre }}</dd>
+              <dt>Libro</dt><dd>{{ p.libroTitulo }}</dd>
+              <dt>Fecha préstamo</dt><dd>{{ p.fechaPrestamo | date: 'dd/MM/yyyy' }}</dd>
+              <dt>Vencimiento</dt><dd>{{ p.fechaVencimiento | date: 'dd/MM/yyyy' }}</dd>
+              <dt>Estado</dt><dd><app-estado-badge [estado]="p.estado" /></dd>
+            </dl>
+          </div>
+          @if (atraso() > 0) {
+            <div class="alert danger mt-2"><lucide-icon name="clock" [size]="16" />
+              <span>Se devuelve con <strong>{{ atraso() }} {{ atraso() === 1 ? 'día' : 'días' }} de retraso</strong>.</span></div>
+          } @else {
+            <div class="alert success mt-2"><lucide-icon name="circle-check" [size]="16" /><span>Devolución dentro del plazo.</span></div>
+          }
+          <div class="field mt-2">
+            <label>Estado del libro</label>
+            <div class="radios">
+              <label class="radio" [class.on]="estadoLibro === 'BUENO'">
+                <input type="radio" name="estado" value="BUENO" [(ngModel)]="estadoLibro" /> <lucide-icon name="circle-check" [size]="16" /> Buen estado
+              </label>
+              <label class="radio bad" [class.on]="estadoLibro === 'DANADO'">
+                <input type="radio" name="estado" value="DANADO" [(ngModel)]="estadoLibro" /> <lucide-icon name="triangle-alert" [size]="16" /> Dañado
+              </label>
+            </div>
+          </div>
+          <div class="field">
+            <label>Observaciones</label>
+            <textarea class="textarea" [(ngModel)]="observaciones" maxlength="500" placeholder="Opcional"></textarea>
+          </div>
+          <button class="btn btn-primary btn-block" (click)="registrar()" [disabled]="registrando()">
+            @if (registrando()) { <span class="spinner"></span> } @else { <lucide-icon name="undo-2" [size]="17" /> } Registrar devolución
+          </button>
+        } @else {
+          <app-empty-state icono="undo-2" titulo="Seleccione un préstamo" texto="Búsquelo arriba y haga clic para registrar su devolución" />
+        }
+      </div>
+    </section>
+
+    <!-- ===== Historial ===== -->
+    <section class="card">
+      <div class="card-header"><h2><lucide-icon name="history" [size]="18" /> Historial de devoluciones</h2></div>
+      @if (historial(); as h) {
+        <div class="table-wrap">
+          <table class="table">
+            <thead><tr><th>Usuario</th><th>Libro</th><th>Fecha</th><th>Retraso</th><th>Estado</th></tr></thead>
+            <tbody>
+              @for (d of h.content; track d.id; let i = $index) {
+                <tr [style.--i]="i">
+                  <td><strong>{{ d.usuarioNombre }}</strong><span class="sub mono">{{ d.codigo }}</span></td>
+                  <td class="titulo">{{ d.libroTitulo }}</td>
+                  <td class="nowrap">{{ d.fechaDevolucion | date: 'dd/MM/yyyy' }}</td>
+                  <td>@if (d.diasRetraso > 0) { <span class="badge danger">{{ d.diasRetraso }} d</span> } @else { <span class="badge success">A tiempo</span> }</td>
+                  <td><app-estado-badge [estado]="d.estadoLibro" /></td>
+                </tr>
+              } @empty {
+                <tr><td colspan="5"><app-empty-state icono="history" titulo="Aún no hay devoluciones" /></td></tr>
+              }
+            </tbody>
+          </table>
+        </div>
+        <app-pagination [pagina]="h.page" [totalPaginas]="h.totalPages" [total]="h.totalElements" [tamano]="h.size"
+                        etiqueta="devoluciones" (cambiar)="cargarHistorial($event)" />
+      }
+    </section>
+  </div>
+</div>

@@ -1,0 +1,48 @@
+<div class="page">
+  <div class="page-head">
+    <div>
+      <h1>Categorías</h1>
+      <p>Organiza el catálogo por géneros y temas</p>
+    </div>
+    <button class="btn btn-primary" (click)="abrir()"><lucide-icon name="plus" [size]="17" /> Nueva categoría</button>
+  </div>
+
+  <div class="cats">
+    @for (c of categorias(); track c.id; let i = $index) {
+      <article class="card hover-lift cat" [style.--i]="i">
+        <span class="ico" [style.--h]="(i * 47) % 360"><lucide-icon name="tags" [size]="20" /></span>
+        <div class="grow">
+          <h3>{{ c.nombre }}</h3>
+          <p class="muted small">{{ c.descripcion || 'Sin descripción' }}</p>
+          <span class="badge primary mt-1">{{ c.cantidadLibros ?? 0 }} {{ c.cantidadLibros === 1 ? 'título' : 'títulos' }}</span>
+        </div>
+        <div class="acc">
+          <button class="icon-btn" (click)="abrir(c)" aria-label="Editar"><lucide-icon name="pencil" [size]="15" /></button>
+          <button class="icon-btn danger" (click)="eliminar(c)" aria-label="Eliminar"><lucide-icon name="trash-2" [size]="15" /></button>
+        </div>
+      </article>
+    } @empty {
+      <app-empty-state icono="tags" titulo="Sin categorías" />
+    }
+  </div>
+</div>
+
+@if (formAbierto()) {
+  <app-modal [titulo]="editando() ? 'Editar categoría' : 'Nueva categoría'" icono="tags" [ancho]="460" (cerrar)="formAbierto.set(false)">
+    <form id="form-cat" [formGroup]="form" (ngSubmit)="guardar()">
+      <div class="field">
+        <label>Nombre <span class="req">*</span></label>
+        <input class="input" formControlName="nombre" [class.invalid]="form.controls.nombre.invalid && form.controls.nombre.touched" />
+        @if (form.controls.nombre.invalid && form.controls.nombre.touched) { <span class="error-text">Ingrese un nombre</span> }
+      </div>
+      <div class="field">
+        <label>Descripción</label>
+        <textarea class="textarea" formControlName="descripcion"></textarea>
+      </div>
+    </form>
+    <div modal-footer>
+      <button class="btn" (click)="formAbierto.set(false)">Cancelar</button>
+      <button class="btn btn-primary" type="submit" form="form-cat"><lucide-icon name="save" [size]="16" /> Guardar</button>
+    </div>
+  </app-modal>
+}

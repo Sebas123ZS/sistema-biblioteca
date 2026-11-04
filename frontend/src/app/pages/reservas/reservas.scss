@@ -1,0 +1,9 @@
+.col { position: sticky; top: 88px; animation: fadeUp .5s var(--ease) both; animation-delay: .1s; }
+.nombre { max-width: 150px; overflow: hidden; text-overflow: ellipsis; }
+.titulo { display: block; max-width: 170px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.seleccion { display: flex; gap: 12px; align-items: center; padding: 10px 12px; border-radius: 12px; border: 1px solid var(--primary-100);
+  background: var(--primary-50); animation: scaleIn .25s var(--ease);
+  .grow { display: flex; flex-direction: column; min-width: 0; } strong { font-size: 13.5px; } }
+.disp + .disp { margin-top: 16px; padding-top: 16px; border-top: 1px dashed var(--border); }
+.aviso { border-color: #bde8d2; }
+.kv { grid-template-columns: 100px 1fr; }

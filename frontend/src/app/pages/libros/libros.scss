@@ -1,0 +1,41 @@
+.vista { display: flex; gap: 6px; .icon-btn.on { background: var(--primary); color: #fff; } }
+.loading { opacity: .55; transition: opacity .2s; pointer-events: none; }
+
+.grid-libros { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 18px; padding: 4px 20px 20px; }
+.libro-card {
+  position: relative; display: flex; flex-direction: column; border: 1px solid var(--border); border-radius: 16px; overflow: hidden;
+  background: #fff; cursor: pointer; transition: transform .3s var(--ease), box-shadow .3s var(--ease), border-color .3s;
+  animation: fadeUp .45s var(--ease) both; animation-delay: calc(var(--i) * 40ms);
+  &:hover { transform: translateY(-6px); box-shadow: var(--shadow-lg); border-color: var(--primary-100);
+    app-book-cover { transform: translateY(-4px) rotate(-2deg) scale(1.04); }
+    .hover-actions { opacity: 1; transform: none; } }
+}
+.cover-wrap { display: grid; place-items: center; padding: 22px 0 18px;
+  background: radial-gradient(100% 80% at 50% 0%, var(--primary-50), #f6f8fc);
+  app-book-cover { transition: transform .4s var(--ease); } }
+.info { padding: 14px 16px 16px; display: flex; flex-direction: column; gap: 4px; flex: 1;
+  h3 { font-size: 14.5px; line-height: 1.3; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .cat { align-self: flex-start; margin-bottom: 4px; }
+  .autor { margin-bottom: 8px; } }
+.dispo { margin-top: auto; display: flex; flex-direction: column; gap: 6px; }
+.meter { height: 6px; border-radius: 99px; background: var(--danger-50); overflow: hidden;
+  span { display: block; height: 100%; border-radius: 99px; background: linear-gradient(90deg, var(--success), #42c88a); transform-origin: left; animation: grow .8s var(--ease) both; }
+  span.zero { width: 0 !important; } }
+.hover-actions { position: absolute; top: 10px; right: 10px; display: flex; gap: 6px; opacity: 0; transform: translateY(-6px); transition: all .25s var(--ease);
+  .icon-btn { background: #fff; box-shadow: var(--shadow); } }
+@media (hover: none) { .hover-actions { opacity: 1; transform: none; } }
+
+.titulo-tabla { max-width: 240px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+.detalle { display: flex; gap: 22px; align-items: flex-start; }
+@media (max-width: 560px) { .detalle { flex-direction: column; align-items: center; } }
+.dispo-box { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px;
+  div { background: var(--surface-2); border-radius: 12px; padding: 10px; text-align: center; display: flex; flex-direction: column; }
+  strong { font-size: 22px; } .warn { color: var(--warning); } span { font-size: 11.5px; color: var(--muted); } }
+
+.form-libro { display: flex; gap: 22px; align-items: flex-start; }
+.preview { display: flex; flex-direction: column; align-items: center; gap: 8px; padding-top: 22px; }
+@media (max-width: 640px) { .form-libro { flex-direction: column; } .preview { align-self: center; } }
+.chips-autores { display: flex; flex-wrap: wrap; gap: 6px; &:empty { display: none; } }
+.chip-autor { display: inline-flex; align-items: center; gap: 4px; padding: 4px 6px 4px 12px; border-radius: 999px; background: var(--primary-50); color: var(--primary); font-weight: 600; font-size: 12.5px; animation: scaleIn .2s var(--ease);
+  button { border: none; background: none; color: inherit; cursor: pointer; display: grid; place-items: center; padding: 2px; border-radius: 50%; &:hover { background: var(--primary-100); } } }

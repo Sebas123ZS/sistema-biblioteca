@@ -1,0 +1,86 @@
+<div class="layout" [class.menu-abierto]="menuAbierto()">
+  <!-- ===== Barra lateral ===== -->
+  <aside class="sidebar">
+    <a class="brand" [routerLink]="auth.rutaInicio()">
+      <span class="logo"><lucide-icon name="book-open" [size]="24" /></span>
+      <span>
+        <strong>Biblioteca</strong>
+        <small>Sistema de Gestión</small>
+      </span>
+    </a>
+
+    <nav>
+      <span class="nav-title">{{ auth.esBibliotecario() ? 'Administración' : 'Mi biblioteca' }}</span>
+      @for (item of items(); track item.texto; let i = $index) {
+        <a [routerLink]="item.ruta" routerLinkActive="active" class="nav-link" [style.--i]="i">
+          <lucide-icon [name]="item.icono" [size]="19" />
+          <span>{{ item.texto }}</span>
+        </a>
+      }
+    </nav>
+
+    <div class="sidebar-foot">
+      <div class="quote">
+        <lucide-icon name="sparkles" [size]="16" />
+        <p>El conocimiento también construye un mejor mañana.</p>
+      </div>
+      <button class="nav-link logout" (click)="salir()">
+        <lucide-icon name="log-out" [size]="19" />
+        <span>Cerrar sesión</span>
+      </button>
+    </div>
+  </aside>
+  <div class="overlay" (click)="menuAbierto.set(false)"></div>
+
+  <!-- ===== Contenido ===== -->
+  <div class="main">
+    <header class="topbar">
+      <button class="icon-btn menu-btn" (click)="menuAbierto.set(true)" aria-label="Menú">
+        <lucide-icon name="menu" [size]="18" />
+      </button>
+      <div class="fecha">
+        <lucide-icon name="calendar" [size]="16" />
+        <span>{{ hoy | date: "EEEE, d 'de' MMMM 'de' y" }}</span>
+      </div>
+
+      <div class="right">
+        <div class="notif">
+          <button class="icon-btn bell" (click)="toggleNotificaciones()" aria-label="Avisos">
+            <lucide-icon name="bell" [size]="18" />
+            @if (avisos().length > 0) { <span class="dot">{{ avisos().length }}</span> }
+          </button>
+          @if (notificacionesAbiertas()) {
+            <div class="panel">
+              <div class="panel-head">
+                <strong>Libros listos para retirar</strong>
+              </div>
+              @for (r of avisos(); track r.id) {
+                <a class="aviso" routerLink="/reservas">
+                  <span class="ico"><lucide-icon name="bookmark" [size]="15" /></span>
+                  <span>
+                    <b>{{ r.libroTitulo }}</b>
+                    <small>{{ auth.esBibliotecario() ? r.usuarioNombre + ' · ' : '' }}retirar hasta el {{ r.fechaExpiracion | date: 'dd/MM/yyyy' }}</small>
+                  </span>
+                </a>
+              } @empty {
+                <p class="vacio">No hay avisos por ahora</p>
+              }
+            </div>
+          }
+        </div>
+
+        <div class="user">
+          <span class="avatar">{{ iniciales() }}</span>
+          <span class="who">
+            <strong>{{ auth.usuario()?.nombreCompleto }}</strong>
+            <small>{{ auth.esBibliotecario() ? 'Bibliotecario(a)' : 'Lector' }}</small>
+          </span>
+        </div>
+      </div>
+    </header>
+
+    <main class="content">
+      <router-outlet />
+    </main>
+  </div>
+</div>

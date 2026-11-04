@@ -1,0 +1,91 @@
+<div class="page">
+  <div class="page-head">
+    <div>
+      <h1>Autores</h1>
+      <p>Registra y administra los autores asociados a los libros del catálogo</p>
+    </div>
+    <button class="btn btn-primary" (click)="abrir()"><lucide-icon name="plus" [size]="17" /> Registrar autor</button>
+  </div>
+
+  <section class="card">
+    <div class="card-header"><h2><lucide-icon name="feather" [size]="18" /> Listado de autores</h2></div>
+    <div class="toolbar">
+      <div class="input-icon">
+        <lucide-icon name="search" [size]="16" />
+        <input class="input" placeholder="Buscar por nombre o nacionalidad…" [(ngModel)]="q" (input)="buscarConRetraso()" />
+      </div>
+    </div>
+
+    @if (pagina(); as p) {
+      @if (p.content.length) {
+        <div class="table-wrap">
+          <table class="table">
+            <thead><tr><th>Código</th><th>Autor</th><th>Nacionalidad</th><th class="text-right">Libros</th><th class="text-right">Acciones</th></tr></thead>
+            <tbody>
+              @for (a of p.content; track a.id; let i = $index) {
+                <tr [style.--i]="i">
+                  <td class="mono muted">{{ a.codigo }}</td>
+                  <td>
+                    <div class="flex">
+                      <span class="avatar">{{ iniciales(a) }}</span>
+                      <div>
+                        <strong>{{ a.nombreCompleto }}</strong>
+                        @if (a.biografia) { <div class="muted small bio">{{ a.biografia }}</div> }
+                      </div>
+                    </div>
+                  </td>
+                  <td>{{ a.nacionalidad || '—' }}</td>
+                  <td class="text-right"><span class="badge" [class.primary]="a.cantidadLibros > 0" [class.neutral]="a.cantidadLibros === 0">{{ a.cantidadLibros }}</span></td>
+                  <td>
+                    <div class="actions">
+                      <button class="icon-btn" (click)="abrir(a)" aria-label="Editar"><lucide-icon name="pencil" [size]="15" /></button>
+                      <button class="icon-btn danger" (click)="eliminar(a)" [disabled]="a.cantidadLibros > 0"
+                              [title]="a.cantidadLibros > 0 ? 'Tiene libros activos' : 'Eliminar'" aria-label="Eliminar">
+                        <lucide-icon name="trash-2" [size]="15" />
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      } @else {
+        <app-empty-state icono="feather" titulo="No hay autores" texto="Registre el primer autor" />
+      }
+      <app-pagination [pagina]="p.page" [totalPaginas]="p.totalPages" [total]="p.totalElements" [tamano]="p.size"
+                      etiqueta="autores" (cambiar)="cargar($event)" />
+    }
+  </section>
+</div>
+
+@if (formAbierto()) {
+  <app-modal [titulo]="editando() ? 'Editar autor' : 'Registrar autor'" icono="feather" (cerrar)="formAbierto.set(false)">
+    <form id="form-autor" [formGroup]="form" (ngSubmit)="guardar()" class="form-grid">
+      <div class="field">
+        <label>Nombres <span class="req">*</span></label>
+        <input class="input" formControlName="nombres" [class.invalid]="invalido('nombres')" />
+        @if (invalido('nombres')) { <span class="error-text">Ingrese los nombres</span> }
+      </div>
+      <div class="field">
+        <label>Apellidos <span class="req">*</span></label>
+        <input class="input" formControlName="apellidos" [class.invalid]="invalido('apellidos')" />
+        @if (invalido('apellidos')) { <span class="error-text">Ingrese los apellidos</span> }
+      </div>
+      <div class="field full">
+        <label>Nacionalidad</label>
+        <input class="input" formControlName="nacionalidad" placeholder="Ej. Peruana" />
+      </div>
+      <div class="field full">
+        <label>Biografía</label>
+        <textarea class="textarea" formControlName="biografia" rows="4" placeholder="Breve reseña (opcional)"></textarea>
+      </div>
+    </form>
+    <div modal-footer>
+      <button class="btn" (click)="formAbierto.set(false)">Cancelar</button>
+      <button class="btn btn-primary" type="submit" form="form-autor" [disabled]="guardando()">
+        @if (guardando()) { <span class="spinner"></span> } @else { <lucide-icon name="save" [size]="16" /> } Guardar
+      </button>
+    </div>
+  </app-modal>
+}

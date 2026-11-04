@@ -1,0 +1,136 @@
+<div class="page">
+  <div class="page-head">
+    <div>
+      <h1>{{ saludo() }}, {{ auth.usuario()?.nombres }}</h1>
+      <p>Resumen general de la biblioteca</p>
+    </div>
+    <div class="flex">
+      <button class="btn" (click)="cargar()"><lucide-icon name="refresh-cw" [size]="16" /> Actualizar</button>
+      <a class="btn btn-primary" routerLink="/prestamos"><lucide-icon name="plus" [size]="17" /> Nuevo préstamo</a>
+    </div>
+  </div>
+
+  @if (datos(); as d) {
+    <div class="stats stagger">
+      <app-stat-card style="--i:0" icono="book-open" etiqueta="Títulos en catálogo" [valor]="d.totalTitulos"
+                     [detalle]="d.totalEjemplares + ' ejemplares en total'" tono="primary" />
+      <app-stat-card style="--i:1" icono="arrow-left-right" etiqueta="Préstamos activos" [valor]="d.prestamosActivos"
+                     [detalle]="d.devolucionesMes + ' devoluciones este mes'" tono="success" />
+      <app-stat-card style="--i:2" icono="triangle-alert" etiqueta="Préstamos vencidos" [valor]="d.prestamosVencidos"
+                     detalle="Requieren seguimiento" tono="danger" />
+      <app-stat-card style="--i:3" icono="calendar-clock" etiqueta="Reservas en espera" [valor]="d.reservasPendientes"
+                     [detalle]="d.reservasDisponibles + ' listas para retirar'" tono="warning" />
+      <app-stat-card style="--i:4" icono="users" etiqueta="Usuarios registrados" [valor]="d.usuariosRegistrados"
+                     [detalle]="'+' + d.usuariosNuevosMes + ' este mes'" tono="violet" />
+    </div>
+
+    <div class="grid">
+      <!-- Disponibilidad -->
+      <section class="card anim-fade-up dispo">
+        <div class="card-header"><h2><lucide-icon name="layers" [size]="18" /> Disponibilidad de ejemplares</h2></div>
+        <div class="card-body donut-wrap">
+          <svg viewBox="0 0 120 120" class="donut">
+            <circle cx="60" cy="60" r="48" class="track" />
+            <circle cx="60" cy="60" r="48" class="value" [style.stroke-dasharray]="301.6"
+                    [style.stroke-dashoffset]="301.6 - (301.6 * porcentaje()) / 100" />
+          </svg>
+          <div class="center"><strong>{{ porcentaje() }}%</strong><span>disponible</span></div>
+          <ul class="legend">
+            <li><span class="sw ok"></span> Disponibles <b>{{ d.ejemplaresDisponibles }}</b></li>
+            <li><span class="sw used"></span> Prestados / apartados <b>{{ d.totalEjemplares - d.ejemplaresDisponibles }}</b></li>
+            <li><span class="sw hoy"></span> Devoluciones hoy <b>{{ d.devolucionesHoy }}</b></li>
+          </ul>
+        </div>
+      </section>
+
+      <!-- Categorías -->
+      <section class="card anim-fade-up">
+        <div class="card-header">
+          <h2><lucide-icon name="tags" [size]="18" /> Categorías con más títulos</h2>
+          <a routerLink="/categorias" class="small">Ver todas</a>
+        </div>
+        <div class="card-body">
+          @for (c of d.categorias; track c.nombre; let i = $index) {
+            <div class="bar-row" [style.--i]="i">
+              <span class="pos">{{ i + 1 }}</span>
+              <span class="nombre">{{ c.nombre }}</span>
+              <span class="bar"><span [style.width.%]="(c.total / maxCategoria()) * 100"></span></span>
+              <span class="muted small nowrap">{{ c.total }} {{ c.total === 1 ? 'título' : 'títulos' }}</span>
+            </div>
+          } @empty {
+            <app-empty-state icono="tags" titulo="Sin categorías" />
+          }
+        </div>
+      </section>
+
+      <!-- Últimos libros -->
+      <section class="card anim-fade-up">
+        <div class="card-header">
+          <h2><lucide-icon name="history" [size]="18" /> Últimos libros registrados</h2>
+          <a routerLink="/libros" class="small">Ver catálogo</a>
+        </div>
+        <div class="card-body">
+          @for (l of d.ultimosLibros; track l.id; let i = $index) {
+            <div class="libro-row" [style.--i]="i">
+              <app-book-cover [url]="l.portadaUrl" [titulo]="l.titulo" [ancho]="36" />
+              <div class="grow">
+                <strong>{{ l.titulo }}</strong>
+                <span class="muted small">{{ l.autores[0]?.nombreCompleto }}</span>
+              </div>
+              <span class="muted small nowrap">{{ l.fechaRegistro | date: 'dd/MM/yyyy' }}</span>
+            </div>
+          }
+        </div>
+      </section>
+
+      <!-- Vencidos -->
+      <section class="card anim-fade-up wide">
+        <div class="card-header">
+          <h2><lucide-icon name="circle-alert" [size]="18" /> Préstamos vencidos</h2>
+          <a routerLink="/devoluciones" class="small">Registrar devolución</a>
+        </div>
+        <div class="card-body">
+          @for (p of vencidos(); track p.id; let i = $index) {
+            <div class="alert-row" [style.--i]="i">
+              <span class="avatar">{{ p.usuarioNombre[0] }}</span>
+              <div class="grow">
+                <strong>{{ p.usuarioNombre }}</strong>
+                <span class="muted small">{{ p.libroTitulo }}</span>
+              </div>
+              <span class="badge danger">{{ diasAtraso(p) }} {{ diasAtraso(p) === 1 ? 'día' : 'días' }} de atraso</span>
+            </div>
+          } @empty {
+            <app-empty-state icono="circle-check" titulo="¡Todo al día!" texto="No hay préstamos vencidos" />
+          }
+        </div>
+      </section>
+
+      <!-- Reservas -->
+      <section class="card anim-fade-up">
+        <div class="card-header">
+          <h2><lucide-icon name="hourglass" [size]="18" /> Lista de espera</h2>
+          <a routerLink="/reservas" class="small">Ver reservas</a>
+        </div>
+        <div class="card-body">
+          @for (r of reservas(); track r.id; let i = $index) {
+            <div class="alert-row" [style.--i]="i">
+              <span class="avatar">{{ i + 1 }}</span>
+              <div class="grow">
+                <strong>{{ r.libroTitulo }}</strong>
+                <span class="muted small">{{ r.usuarioNombre }} · {{ r.fechaReserva | date: 'dd/MM/yyyy' }}</span>
+              </div>
+            </div>
+          } @empty {
+            <app-empty-state icono="calendar-check" titulo="Sin reservas en espera" />
+          }
+        </div>
+      </section>
+    </div>
+  } @else if (cargando()) {
+    <div class="stats">
+      @for (i of [1, 2, 3, 4, 5]; track i) {
+        <div class="card sk"><div class="skeleton" style="width: 50%"></div><div class="skeleton" style="width: 30%; height: 26px; margin-top: 10px"></div></div>
+      }
+    </div>
+  }
+</div>
